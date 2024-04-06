@@ -21,7 +21,7 @@ room = Room.from_dict(room1)
 rooms = [room]
 
 
-@mock.patch('rentomatic.use_cases.room_list_use_case.RoomListUseCase')
+@mock.patch('rentomatic.use_cases.room_list_use_case.RoomListUseCase.execute',return_value=ResponseSuccess(rooms))
 def test_get_rooms_list(mock_use_case, client):
     """
     Test the get_rooms_list.
@@ -29,16 +29,27 @@ def test_get_rooms_list(mock_use_case, client):
     client that can access the API endpoints and store responses of the server.
     """
     ## logging.info(mock_use_case.execute)
-    mock_use_case().execute.return_value = ResponseSuccess(rooms)
+    # mock_use_case().execute.return_value = ResponseSuccess(rooms)
 
     http_response = client.get('/rooms')
     assert json.loads(http_response.data.decode('UTF-8')) == [room1]
-    # mock_use_case.assert_called_with()
-    mock_use_case().execute.assert_called
+    mock_use_case.assert_called_with()
+    # mock_use_case().execute.assert_called
 
     args, kwargs = mock_use_case.call_args
     print(args,kwargs)
     assert args[0].filters == {}
 
+    assert http_response.status_code == 200
+    assert http_response.mimetype == 'application/json'
+
+@mock.patch('rentomatic.use_cases.room_list_use_case.RoomListUseCase')
+def test_get_with_filters(mock_use_case, client):
+    mock_use_case().execute.return_value = ResponseSuccess(rooms)
+    http_response = client.get('/rooms?filter_price__gt=2&filter_price__lt=6')
+    assert json.loads(http_response.data.decode('UTF-8')) == []
+    mock_use_case().execute.assert_called
+    args, kwargs = mock_use_case().execute.call_args
+    assert args[0].filters == {'price__gt': '2', 'price__lt': '6'}
     assert http_response.status_code == 200
     assert http_response.mimetype == 'application/json'
